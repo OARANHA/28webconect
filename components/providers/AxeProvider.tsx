@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
-import { configureAxe, axeCore } from '@axe-core/react';
+import axe from 'axe-core';
 
 // Only import and run axe in development mode
 const AxeProvider = () => {
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      configureAxe({
+    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+      // Configure axe accessibility rules
+      axe.configure({
         rules: [
           {
             id: 'color-contrast',
@@ -15,9 +16,9 @@ const AxeProvider = () => {
           },
         ],
       });
-      
+
       // Run axe accessibility check
-      axeCore.run(document.body, (err, results) => {
+      axe.run(document.body, (err, results) => {
         if (err) {
           console.error('Error running axe:', err);
         } else {
