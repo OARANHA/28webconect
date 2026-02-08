@@ -7,6 +7,10 @@ import { AuthProvider } from '@/components/providers/AuthProvider';
 import { auth } from '@/lib/auth';
 import './globals.css';
 
+// Import accessibility and performance providers
+import AxeProvider from '@/components/providers/AxeProvider';
+import PerformanceMonitor from '@/components/providers/PerformanceMonitor';
+
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
@@ -62,6 +66,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="pt-BR" className={inter.variable}>
       <body className="antialiased">
         <AuthProvider session={session}>
+          {/* Accessibility checker in development */}
+          <AxeProvider />
+          {/* Performance monitoring */}
+          <PerformanceMonitor />
           {children}
           <Suspense fallback={null}>
             <ChatWidget />
