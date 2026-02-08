@@ -1,0 +1,445 @@
+// Schema do Prisma para 28Web Connect
+// Configuração com PostgreSQL e extensão pgvector para futuras funcionalidades de RAG
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+// Enum para os papéis de usuário na plataforma
+enum UserRole {
+  CLIENTE
+  ADMIN
+  SUPER_ADMIN
+}
+
+// Enum para tipos de token de verificação
+enum VerificationTokenType {
+  VERIFICATION
+  PASSWORD_RESET
+}
+
+// Enum para status do briefing
+enum BriefingStatus {
+  RASCUNHO
+  ENVIADO
+  EM_ANALISE
+  APROVADO
+  REJEITADO
+}
+
+// Enum para tipos de serviço
+enum ServiceType {
+  ERP_BASICO
+  ERP_ECOMMERCE
+  ERP_PREMIUM
+  LANDING_IA
+  LANDING_IA_WHATSAPP
+}
+
+// Enum para tipos de notificação
+enum NotificationType {
+  NOVO_BRIEFING
+  PROJETO_ATUALIZADO
+  NOVA_MENSAGEM
+  ARQUIVO_SOLICITADO
+  PROJETO_CONCLUIDO
+  BRIEFING_APROVADO
+  BRIEFING_REJEITADO
+  MILESTONE_CONCLUIDA
+  SISTEMA
+}
+
+// Enum para canais de notificação
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+}
+
+// Enum para status do projeto
+enum ProjectStatus {
+  AGUARDANDO_APROVACAO
+  ATIVO
+  PAUSADO
+  CONCLUIDO
+  CANCELADO
+  ARQUIVADO
+}
+
+// Modelo de Usuário compatível com NextAuth.js v5 (Auth.js)
+// Inclui campos customizados para conformidade com LGPD
+model User {
+  id              String    @id @default(cuid())
+  name            String?
+  email           String    @unique
+  emailVerified   DateTime?
+  password        String?
+  phone           String?
+  company         String?
+  role            UserRole  @default(CLIENTE)
+  marketingConsent Boolean   @default(false)
+  doNotDelete     Boolean   @default(false) // Admin pode marcar para override de políticas de retenção
+  lastLoginAt     DateTime?
+  warningSentAt   DateTime? // Data de envio do aviso de inatividade (11 meses)
+  image           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relações
+  accounts     Account[]
+  sessions     Session[]
+  chatSessions ChatSession[]
+
+  // Add these new relations
+  briefings      Briefing[]
+  briefingDrafts BriefingDraft[]
+
+  // Relações de notificações
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  pushSubscriptions       PushSubscription[]
+
+  // Relações de projetos
+  projects        Project[]
+  projectFiles    ProjectFile[]
+  projectComments ProjectComment[]
+
+  @@map("users")
+}
+
+// Modelo de Conta compatível com NextAuth.js v5 (Auth.js)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  // Relação com usuário
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+// Modelo de Sessão compatível com NextAuth.js v5 (Auth.js)
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  // Relação com usuário
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// Modelo de Token de Verificação compatível com NextAuth.js v5 (Auth.js)
+// Agora com suporte a múltiplos tipos de verificação
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  type       VerificationTokenType
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@index([type])
+  @@map("verification_tokens")
+}
+
+// Modelo de Documento para RAG (Retrieval-Augmented Generation)
+// Armazena conteúdo e embeddings vetoriais para busca semântica
+model Document {
+  id        String   @id @default(cuid())
+  content   String   // Conteúdo textual completo
+  metadata  Json     // Informações adicionais (título, fonte, tipo)
+  embedding Unsupported("vector(1536)")? // Vetor de embeddings (1536 dimensões - Mistral AI)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("documents")
+}
+
+// Modelo de Sessão de Chat para histórico de usuários logados
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String?  // Nullable para visitantes anônimos
+  messages  Json     // Array de mensagens serializado
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relação com usuário
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("chat_sessions")
+}
+
+// Modelo de Briefing para captação de requisitos do cliente
+model Briefing {
+  id           String         @id @default(cuid())
+  userId       String
+  serviceType  ServiceType
+  companyName  String
+  segment      String         // Ramo de atividade
+  objectives   String         @db.Text // Objetivos e metas (texto longo)
+  budget       String?        // Orçamento estimado (string para flexibilidade)
+  deadline     String?        // Prazo desejado
+  
+  // Campos opcionais específicos
+  features     String?        @db.Text // Funcionalidades específicas
+  references   String?        @db.Text // Referências visuais
+  integrations String?        @db.Text // Integrações necessárias
+  additionalInfo Json?        // Informações adicionais em formato flexível
+  
+  // Controle de status
+  status       BriefingStatus @default(ENVIADO)
+  rejectionReason String?     @db.Text // Motivo da rejeição (se aplicável)
+  
+  // Timestamps
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  submittedAt  DateTime?      // Data de envio do briefing
+  reviewedAt   DateTime?      // Data de análise/aprovação/rejeição
+  
+  // Relação com usuário
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relação com projeto (quando aprovado)
+  project Project?
+  
+  // Flag para identificar dados com obrigação legal de retenção (5 anos)
+  isContractual Boolean @default(false)
+  
+  @@index([userId])
+  @@index([status])
+  @@index([serviceType])
+  @@index([createdAt])
+  @@map("briefings")
+}
+
+// Modelo de Rascunho de Briefing para auto-save
+model BriefingDraft {
+  id         String   @id @default(cuid())
+  userId     String
+  data       Json     // Dados do formulário em formato JSON
+  lastSaved  DateTime @default(now()) @updatedAt
+  expiresAt  DateTime // Data de expiração (30 dias após criação)
+  
+  // Relação com usuário
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId]) // Para consultas por usuário
+  @@index([expiresAt]) // Para limpeza automática de rascunhos expirados
+  @@map("briefing_drafts")
+}
+
+// Modelo de Plano de Preços
+model PricingPlan {
+  id           String   @id @default(cuid())
+  name         String   @unique // Nome do plano (ex: "ERP Cloud Básico")
+  serviceType  ServiceType @unique // Tipo de serviço associado
+  price        Decimal  @db.Decimal(10, 2) // Preço em reais (ex: 1500.00)
+  features     Json     // Array de funcionalidades incluídas
+  storageLimit Int      // Limite de storage em GB
+  isActive     Boolean  @default(true) // Plano ativo/arquivado
+  order        Int      @default(0) // Ordem de exibição
+  
+  // Timestamps
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([isActive])
+  @@index([order])
+  @@map("pricing_plans")
+}
+
+// Modelo de Projeto vinculado a um briefing aprovado
+model Project {
+  id          String        @id @default(cuid())
+  userId      String
+  briefingId  String?       @unique // Opcional: projeto pode existir sem briefing
+  name        String
+  description String?       @db.Text
+  status      ProjectStatus @default(AGUARDANDO_APROVACAO)
+  progress    Int           @default(0) // Percentual de 0 a 100
+
+  // Timestamps
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  startedAt   DateTime?     // Data de início efetivo
+  completedAt DateTime?     // Data de conclusão
+
+  // Relações
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  briefing   Briefing?          @relation(fields: [briefingId], references: [id], onDelete: SetNull)
+  milestones ProjectMilestone[]
+  files      ProjectFile[]
+  comments   ProjectComment[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([briefingId])
+  @@map("projects")
+}
+
+// Modelo de Milestone (etapa) do projeto
+model ProjectMilestone {
+  id          String    @id @default(cuid())
+  projectId   String
+  name        String
+  description String?   @db.Text
+  completed   Boolean   @default(false)
+  order       Int       // Ordem de exibição (1, 2, 3, 4)
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime? // Data de conclusão da milestone
+
+  // Relações
+  project  Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comments ProjectComment[]
+
+  @@index([projectId])
+  @@index([order])
+  @@index([completed])
+  @@map("project_milestones")
+}
+
+// Modelo de Arquivo do Projeto
+model ProjectFile {
+  id         String   @id @default(cuid())
+  projectId  String
+  userId     String   // Quem fez o upload (cliente ou admin)
+  filename   String
+  filepath   String   // Caminho relativo no sistema de arquivos
+  filesize   Int      // Tamanho em bytes
+  mimetype   String   // Tipo MIME (image/jpeg, application/pdf, etc.)
+
+  // Timestamps
+  uploadedAt DateTime @default(now())
+
+  // Relações
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([uploadedAt])
+  @@map("project_files")
+}
+
+// Modelo de Comentário do Projeto
+model ProjectComment {
+  id          String   @id @default(cuid())
+  projectId   String
+  milestoneId String?  // Opcional: comentário pode ser geral ou específico de milestone
+  userId      String
+  content     String   @db.Text
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relações
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone ProjectMilestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([milestoneId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("project_comments")
+}
+
+// Modelo de Notificação
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String              @db.Text
+  read      Boolean             @default(false)
+  channel   NotificationChannel
+  metadata  Json?
+  createdAt DateTime            @default(now())
+
+  // Relação com usuário
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// Modelo de Preferências de Notificação
+model NotificationPreference {
+  id            String           @id @default(cuid())
+  userId        String
+  type          NotificationType
+  emailEnabled  Boolean          @default(true)
+  pushEnabled   Boolean          @default(true)
+  inAppEnabled  Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relação com usuário
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@index([userId])
+  @@map("notification_preferences")
+}
+
+// Modelo de Push Subscription para Web Push API
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  // Relação com usuário
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([endpoint])
+  @@map("push_subscriptions")
+}
+
+// Modelo de Log de Exclusão de Dados (LGPD)
+model DataDeletionLog {
+  id          String   @id @default(cuid())
+  userId      String?  // Nullable pois usuário pode já ter sido deletado
+  userEmail   String   // Preservar email para auditoria
+  reason      String   // Motivo da exclusão (ex: "Inatividade 12 meses", "Solicitação do usuário")
+  deletedBy   String?  // ID do admin que executou (null se automático)
+  dataTypes   Json     // Array de tipos de dados deletados: ["user", "briefings", "projects"]
+  deletedAt   DateTime @default(now())
+  
+  @@index([deletedAt])
+  @@index([reason])
+  @@map("data_deletion_logs")
+}

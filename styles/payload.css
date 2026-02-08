@@ -1,0 +1,99 @@
+/* Payload CMS Admin Styles - Custom overrides */
+
+/* Dark theme customizations to match 28Web brand */
+:root {
+  --theme-bg: #0a0a0a;
+  --theme-text: #ffffff;
+  --theme-primary: #ff6b35;
+  --theme-primary-hover: #ff8c42;
+}
+
+/* Admin panel background */
+.payload__admin-panel {
+  background-color: var(--theme-bg);
+}
+
+/* Primary color overrides */
+.btn--style-primary,
+button.btn--style-primary {
+  background-color: var(--theme-primary);
+  border-color: var(--theme-primary);
+}
+
+.btn--style-primary:hover,
+button.btn--style-primary:hover {
+  background-color: var(--theme-primary-hover);
+  border-color: var(--theme-primary-hover);
+}
+
+/* Link colors */
+a {
+  color: var(--theme-primary);
+}
+
+a:hover {
+  color: var(--theme-primary-hover);
+}
+
+/* Selection color */
+::selection {
+  background-color: var(--theme-primary);
+  color: white;
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline-color: var(--theme-primary);
+}
+
+/* Table header */
+.table__header {
+  background-color: rgba(255, 107, 53, 0.1);
+}
+
+/* Active nav item */
+.nav__link--active {
+  color: var(--theme-primary);
+}
+
+/* Document controls */
+.doc-controls__toggle.is-active {
+  background-color: var(--theme-primary);
+}
+
+/* Pill component */
+.pill--style-primary {
+  background-color: var(--theme-primary);
+}
+
+/* Toast notifications */
+.toast-success {
+  background-color: #22c55e;
+}
+
+.toast-error {
+  background-color: #ef4444;
+}
+
+.toast-warning {
+  background-color: #f59e0b;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}

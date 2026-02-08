@@ -1,0 +1,14 @@
+# Som de notificação
+
+Coloque aqui um arquivo `notification.mp3` para o som de notificação.
+
+Você pode usar um som curto (1-2 segundos) de notificação suave.
+Sites recomendados para obter sons:
+- https://freesound.org/
+- https://notificationsounds.com/
+
+O som deve ser:
+- Formato: MP3
+- Duração: ~1 segundo
+- Volume: Baixo (não intrusivo)
+- Licença: Creative Commons ou domínio público
