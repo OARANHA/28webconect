@@ -53,13 +53,24 @@ export default function LoginPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center">
           {/* Coluna Esquerda - Conteúdo Simplificado */}
           <div className="space-y-8 lg:col-span-1">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+            <div className="flex justify-center mb-6">
+              <Link href="/" className="block">
+                <img 
+                  src="/assets/28connect.jpg" 
+                  alt="28Web Connect" 
+                  width={180} 
+                  height={60} 
+                  className="rounded-lg"
+                />
+              </Link>
+            </div>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight text-center lg:text-left">
               Bem-vindo ao Futuro
             </h1>
-            <p className="text-lg md:text-xl text-neutral-gray max-w-xl mb-8">
+            <p className="text-lg md:text-xl text-neutral-gray max-w-xl mb-8 text-center lg:text-left">
               Inovação e excelência em cada projeto que desenvolvemos juntos
             </p>
-            <div className="inline-flex items-center gap-2 text-accent-primary">
+            <div className="inline-flex items-center gap-2 text-accent-primary justify-center lg:justify-start">
               Soluções digitais que transformam negócios
             </div>
           </div>

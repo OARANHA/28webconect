@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
+import Link from 'next/link';
 
 interface AuthFormProps {
   title: string;
@@ -31,14 +31,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ title, subtitle, children, footer }
       >
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <Image
-            src="/assets/28connect.jpg"
-            alt="28Web Connect"
-            width={120}
-            height={40}
-            priority
-            className="rounded-lg"
-          />
+          <Link href="/" className="block">
+            <img
+              src="/assets/28connect.jpg"
+              alt="28Web Connect"
+              width={180}
+              height={60}
+              className="rounded-lg"
+            />
+          </Link>
         </div>
 
         {/* Title */}
